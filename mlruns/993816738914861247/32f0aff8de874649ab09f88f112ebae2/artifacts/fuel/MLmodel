@@ -1,0 +1,13 @@
+artifact_path: fuel
+flavors:
+  sklearn:
+    code: null
+    pickled_model: model.pkl
+    serialization_format: cloudpickle
+    sklearn_version: 1.6.1
+mlflow_version: 2.21.2
+model_size_bytes: 27
+model_uuid: 357b8804240e4ece81c3423a96442e79
+prompts: null
+run_id: 32f0aff8de874649ab09f88f112ebae2
+utc_time_created: '2025-04-02 16:52:38.916815'

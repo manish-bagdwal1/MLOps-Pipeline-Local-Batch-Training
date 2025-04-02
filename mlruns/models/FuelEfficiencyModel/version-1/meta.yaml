@@ -1,0 +1,14 @@
+aliases: []
+creation_timestamp: 1743612763944
+current_stage: None
+description: null
+last_updated_timestamp: 1743612763944
+name: FuelEfficiencyModel
+run_id: 32f0aff8de874649ab09f88f112ebae2
+run_link: null
+source: file:///C:/Users/Lenovo/Desktop/GDS%20MLOPs/Project-1/mlruns/993816738914861247/32f0aff8de874649ab09f88f112ebae2/artifacts/fuel_model
+status: READY
+status_message: null
+storage_location: file:///C:/Users/Lenovo/Desktop/GDS%20MLOPs/Project-1/mlruns/993816738914861247/32f0aff8de874649ab09f88f112ebae2/artifacts/fuel_model
+user_id: null
+version: 1

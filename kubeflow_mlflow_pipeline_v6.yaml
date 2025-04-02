@@ -1,0 +1,269 @@
+# PIPELINE DEFINITION
+# Name: regression-model-training-pipeline
+# Description: A pipeline that downloads data from Azure Blob Storage and trains models
+# Inputs:
+#    azure_connection_string: str [Default: 'DefaultEndpointsProtocol=https;AccountName=csvstorage09;AccountKey=70m6riT+DLT4TJltJVn5qBNQsBoKnjaOiGZtPhtCAVbf/oAFrYNdgdzk8+4RZ0Lu8V/jy0o8E+c2+ASthlHmqA==;EndpointSuffix=core.windows.net']
+#    container_name: str [Default: 'csvstorage']
+#    x_test_blob: str [Default: 'X_test.csv']
+#    x_train_blob: str [Default: 'X_train.csv']
+#    y_test_blob: str [Default: 'y_test.csv']
+#    y_train_blob: str [Default: 'y_train.csv']
+components:
+  comp-download-from-azure:
+    executorLabel: exec-download-from-azure
+    inputDefinitions:
+      parameters:
+        azure_connection_string:
+          parameterType: STRING
+        container_name:
+          defaultValue: csvstorage
+          isOptional: true
+          parameterType: STRING
+        x_test_blob:
+          defaultValue: X_test.csv
+          isOptional: true
+          parameterType: STRING
+        x_train_blob:
+          defaultValue: X_train.csv
+          isOptional: true
+          parameterType: STRING
+        y_test_blob:
+          defaultValue: y_test.csv
+          isOptional: true
+          parameterType: STRING
+        y_train_blob:
+          defaultValue: y_train.csv
+          isOptional: true
+          parameterType: STRING
+    outputDefinitions:
+      artifacts:
+        x_test:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+        x_train:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+        y_test:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+        y_train:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+  comp-train-and-evaluate:
+    executorLabel: exec-train-and-evaluate
+    inputDefinitions:
+      artifacts:
+        x_test:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+        x_train:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+        y_test:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+        y_train:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+    outputDefinitions:
+      artifacts:
+        best_model:
+          artifactType:
+            schemaTitle: system.Model
+            schemaVersion: 0.0.1
+deploymentSpec:
+  executors:
+    exec-download-from-azure:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - download_from_azure
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.12.1'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"'  &&\
+          \  python3 -m pip install --quiet --no-warn-script-location 'pandas' 'mlflow'\
+          \ 'scikit-learn' 'joblib' 'minio' 'azure-storage-blob' && \"$0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef download_from_azure(\n    x_train: Output[Dataset],\n    x_test:\
+          \ Output[Dataset],\n    y_train: Output[Dataset],\n    y_test: Output[Dataset],\n\
+          \    azure_connection_string: str,\n    container_name: str = 'csvstorage',\n\
+          \    x_train_blob: str=\"X_train.csv\",\n    x_test_blob: str=\"X_test.csv\"\
+          ,\n    y_train_blob: str=\"y_train.csv\",\n    y_test_blob: str=\"y_test.csv\"\
+          \n):\n    import pandas as pd\n    from azure.storage.blob import BlobServiceClient\n\
+          \n    # Initialize Azure Blob Service Client\n    conn_str = 'DefaultEndpointsProtocol=https;AccountName='\
+          \ + 'csvstorage09' + ';'\n    'AccountKey=' + '70m6riT+DLT4TJltJVn5qBNQsBoKnjaOiGZtPhtCAVbf/oAFrYNdgdzk8+4RZ0Lu8V/jy0o8E+c2+ASthlHmqA=='\
+          \ + ';EndpointSuffix=core.windows.net'\n    blob_service_client = BlobServiceClient.from_connection_string(conn_str=azure_connection_string)\n\
+          \n    # Download function\n    def download_blob_to_file(blob_name, output_path):\n\
+          \        blob_client = blob_service_client.get_blob_client(container='csvstorage',\
+          \ blob=blob_name)\n        with open(output_path, \"wb\") as download_file:\n\
+          \            download_file.write(blob_client.download_blob().readall())\n\
+          \n    # Download all files\n    download_blob_to_file(x_train_blob, x_train.path)\n\
+          \    download_blob_to_file(x_test_blob, x_test.path)\n    download_blob_to_file(y_train_blob,\
+          \ y_train.path)\n    download_blob_to_file(y_test_blob, y_test.path)\n\n"
+        image: python:3.12.3
+    exec-train-and-evaluate:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - train_and_evaluate
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.12.1'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"'  &&\
+          \  python3 -m pip install --quiet --no-warn-script-location 'pandas' 'mlflow'\
+          \ 'scikit-learn' 'joblib' 'minio' && \"$0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef train_and_evaluate(\n    x_train: Input[Dataset],\n    x_test:\
+          \ Input[Dataset],\n    y_train: Input[Dataset],\n    y_test: Input[Dataset],\n\
+          \    best_model: Output[Model]\n):\n    import pandas as pd\n    import\
+          \ mlflow\n    import mlflow.sklearn\n    from sklearn.model_selection import\
+          \ GridSearchCV\n    from sklearn.linear_model import LinearRegression, Ridge,\
+          \ Lasso\n    from sklearn.ensemble import RandomForestRegressor\n    from\
+          \ sklearn.metrics import r2_score\n    import joblib\n    from minio import\
+          \ Minio\n\n    # Load Preprocessed Data\n    X_train = pd.read_csv(x_train.path)\n\
+          \    X_test = pd.read_csv(x_test.path)\n    y_train = pd.read_csv(y_train.path).values.ravel()\n\
+          \    y_test = pd.read_csv(y_test.path).values.ravel()\n\n    # Define Models\
+          \ and Hyperparameter Grid\n    models = {\n        'LinearRegression': (LinearRegression(),\
+          \ {}),\n        'Ridge': (Ridge(), {'alpha': [0.1, 1.0, 10.0]}),\n     \
+          \   'Lasso': (Lasso(), {'alpha': [0.1, 1.0, 10.0]}),\n        'RandomForest':\
+          \ (RandomForestRegressor(), {'n_estimators': [50, 100, 200]})\n    }\n\n\
+          \    best_model_instance = None\n    best_score = float('-inf')\n    best_model_name\
+          \ = ''\n\n    mlflow.set_tracking_uri('http://localhost:5000')\n    mlflow.set_experiment('kubeflow_experiment')\n\
+          \n    # Train and Evaluate Models\n    for model_name, (model, param_grid)\
+          \ in models.items():\n        with mlflow.start_run(run_name=model_name):\n\
+          \            if param_grid:\n                grid_search = GridSearchCV(model,\
+          \ param_grid, cv=5, scoring='r2')\n                grid_search.fit(X_train,\
+          \ y_train)\n                model_instance = grid_search.best_estimator_\n\
+          \                best_params = grid_search.best_params_\n            else:\n\
+          \                model_instance = model.fit(X_train, y_train)\n        \
+          \        best_params = {}\n\n            predictions = model_instance.predict(X_test)\n\
+          \            r2 = r2_score(y_test, predictions)\n\n            mlflow.log_params(best_params)\n\
+          \            mlflow.log_metric('R2 Score', r2)\n            mlflow.sklearn.log_model(model_instance,\
+          \ model_name)\n\n            if r2 > best_score:\n                best_score\
+          \ = r2\n                best_model_instance = model_instance\n         \
+          \       best_model_name = model_name\n\n    # Save Best Model\n    joblib.dump(best_model_instance,\
+          \ best_model.path)\n\n    # Upload to MinIO\n    client = Minio('minio-service:9000',\
+          \ access_key='minioadmin', secret_key='minioadmin', secure=False)\n    client.fput_object('models',\
+          \ f'{best_model_name}.pkl', best_model.path)\n\n"
+        image: python:3.12.3
+pipelineInfo:
+  description: A pipeline that downloads data from Azure Blob Storage and trains models
+  name: regression-model-training-pipeline
+root:
+  dag:
+    tasks:
+      download-from-azure:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-download-from-azure
+        inputs:
+          parameters:
+            azure_connection_string:
+              componentInputParameter: azure_connection_string
+            container_name:
+              componentInputParameter: container_name
+            x_test_blob:
+              componentInputParameter: x_test_blob
+            x_train_blob:
+              componentInputParameter: x_train_blob
+            y_test_blob:
+              componentInputParameter: y_test_blob
+            y_train_blob:
+              componentInputParameter: y_train_blob
+        taskInfo:
+          name: download-from-azure
+      train-and-evaluate:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-train-and-evaluate
+        dependentTasks:
+        - download-from-azure
+        inputs:
+          artifacts:
+            x_test:
+              taskOutputArtifact:
+                outputArtifactKey: x_test
+                producerTask: download-from-azure
+            x_train:
+              taskOutputArtifact:
+                outputArtifactKey: x_train
+                producerTask: download-from-azure
+            y_test:
+              taskOutputArtifact:
+                outputArtifactKey: y_test
+                producerTask: download-from-azure
+            y_train:
+              taskOutputArtifact:
+                outputArtifactKey: y_train
+                producerTask: download-from-azure
+        taskInfo:
+          name: train-and-evaluate
+  inputDefinitions:
+    parameters:
+      azure_connection_string:
+        defaultValue: DefaultEndpointsProtocol=https;AccountName=csvstorage09;AccountKey=70m6riT+DLT4TJltJVn5qBNQsBoKnjaOiGZtPhtCAVbf/oAFrYNdgdzk8+4RZ0Lu8V/jy0o8E+c2+ASthlHmqA==;EndpointSuffix=core.windows.net
+        isOptional: true
+        parameterType: STRING
+      container_name:
+        defaultValue: csvstorage
+        isOptional: true
+        parameterType: STRING
+      x_test_blob:
+        defaultValue: X_test.csv
+        isOptional: true
+        parameterType: STRING
+      x_train_blob:
+        defaultValue: X_train.csv
+        isOptional: true
+        parameterType: STRING
+      y_test_blob:
+        defaultValue: y_test.csv
+        isOptional: true
+        parameterType: STRING
+      y_train_blob:
+        defaultValue: y_train.csv
+        isOptional: true
+        parameterType: STRING
+schemaVersion: 2.1.0
+sdkVersion: kfp-2.12.1

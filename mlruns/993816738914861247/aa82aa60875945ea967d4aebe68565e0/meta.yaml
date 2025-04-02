@@ -1,0 +1,15 @@
+artifact_uri: file:///C:/Users/Lenovo/Desktop/GDS%20MLOPs/Project-1/mlruns/993816738914861247/aa82aa60875945ea967d4aebe68565e0/artifacts
+end_time: 1743612240055
+entry_point_name: ''
+experiment_id: '993816738914861247'
+lifecycle_stage: active
+run_id: aa82aa60875945ea967d4aebe68565e0
+run_name: LinearRegression
+run_uuid: aa82aa60875945ea967d4aebe68565e0
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1743612226948
+status: 3
+tags: []
+user_id: Lenovo

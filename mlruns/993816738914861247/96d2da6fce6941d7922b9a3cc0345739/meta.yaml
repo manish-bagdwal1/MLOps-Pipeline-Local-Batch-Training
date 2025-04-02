@@ -1,0 +1,15 @@
+artifact_uri: file:///C:/Users/Lenovo/Desktop/GDS%20MLOPs/Project-1/mlruns/993816738914861247/96d2da6fce6941d7922b9a3cc0345739/artifacts
+end_time: 1743612748024
+entry_point_name: ''
+experiment_id: '993816738914861247'
+lifecycle_stage: active
+run_id: 96d2da6fce6941d7922b9a3cc0345739
+run_name: Lasso
+run_uuid: 96d2da6fce6941d7922b9a3cc0345739
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1743612741454
+status: 3
+tags: []
+user_id: Lenovo

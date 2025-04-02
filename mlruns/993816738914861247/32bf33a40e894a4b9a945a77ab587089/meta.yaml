@@ -1,0 +1,15 @@
+artifact_uri: file:///C:/Users/Lenovo/Desktop/GDS%20MLOPs/Project-1/mlruns/993816738914861247/32bf33a40e894a4b9a945a77ab587089/artifacts
+end_time: 1743612689648
+entry_point_name: ''
+experiment_id: '993816738914861247'
+lifecycle_stage: active
+run_id: 32bf33a40e894a4b9a945a77ab587089
+run_name: RandomForest
+run_uuid: 32bf33a40e894a4b9a945a77ab587089
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1743612677310
+status: 3
+tags: []
+user_id: Lenovo

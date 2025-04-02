@@ -4,3 +4,7 @@ matplotlib
 seaborn
 scikit-learn
 xgboost
+kfp
+mlflow
+minio
+azure.storage.blob

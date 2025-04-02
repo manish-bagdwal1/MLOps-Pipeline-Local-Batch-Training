@@ -1,0 +1,6 @@
+artifact_location: file:///C:/Users/Lenovo/Desktop/GDS%20MLOPs/Project-1/mlruns/993816738914861247
+creation_time: 1743612225481
+experiment_id: '993816738914861247'
+last_update_time: 1743612225481
+lifecycle_stage: active
+name: kubeflow_experiment

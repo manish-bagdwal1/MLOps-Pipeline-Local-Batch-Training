@@ -1,0 +1,15 @@
+artifact_uri: file:///C:/Users/Lenovo/Desktop/GDS%20MLOPs/Project-1/mlruns/993816738914861247/909744d05e4c4ccebc167b9135b25841/artifacts
+end_time: 1743612741447
+entry_point_name: ''
+experiment_id: '993816738914861247'
+lifecycle_stage: active
+run_id: 909744d05e4c4ccebc167b9135b25841
+run_name: Ridge
+run_uuid: 909744d05e4c4ccebc167b9135b25841
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1743612734373
+status: 3
+tags: []
+user_id: Lenovo
