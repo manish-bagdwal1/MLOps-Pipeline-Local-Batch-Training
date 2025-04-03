@@ -8,3 +8,5 @@ kfp
 mlflow
 minio
 azure.storage.blob
+dagshub
+python-dotenv
