@@ -10,3 +10,4 @@ minio
 azure.storage.blob
 dagshub
 python-dotenv
+prometheus_client 
