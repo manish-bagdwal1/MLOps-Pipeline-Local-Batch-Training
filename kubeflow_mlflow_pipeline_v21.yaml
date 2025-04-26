@@ -1,0 +1,600 @@
+# PIPELINE DEFINITION
+# Name: fuel-efficiency-auto-retraining-pipeline
+# Description: Retrains the fuel efficiency model if R2 drops on new data
+# Inputs:
+#    azure_connection_string: str
+#    pushgateway_url: str [Default: 'http://pushgateway-prometheus-pushgateway.monitoring.svc.cluster.local:9091']
+components:
+  comp-check-model-exists:
+    executorLabel: exec-check-model-exists
+    outputDefinitions:
+      parameters:
+        Output:
+          parameterType: STRING
+  comp-condition-1:
+    dag:
+      tasks:
+        train-model:
+          cachingOptions:
+            enableCache: true
+          componentRef:
+            name: comp-train-model
+          inputs:
+            artifacts:
+              x_train:
+                componentInputArtifact: pipelinechannel--download-data-from-azure-x_train
+              y_train:
+                componentInputArtifact: pipelinechannel--download-data-from-azure-y_train
+            parameters:
+              pushgateway_url:
+                componentInputParameter: pipelinechannel--pushgateway_url
+          taskInfo:
+            name: train-model
+    inputDefinitions:
+      artifacts:
+        pipelinechannel--download-data-from-azure-x_train:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+        pipelinechannel--download-data-from-azure-y_train:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+      parameters:
+        pipelinechannel--check-model-exists-Output:
+          parameterType: STRING
+        pipelinechannel--pushgateway_url:
+          parameterType: STRING
+  comp-condition-2:
+    dag:
+      tasks:
+        condition-3:
+          componentRef:
+            name: comp-condition-3
+          dependentTasks:
+          - evaluate-model
+          inputs:
+            artifacts:
+              pipelinechannel--download-data-from-azure-x_train:
+                componentInputArtifact: pipelinechannel--download-data-from-azure-x_train
+              pipelinechannel--download-data-from-azure-y_train:
+                componentInputArtifact: pipelinechannel--download-data-from-azure-y_train
+            parameters:
+              pipelinechannel--check-model-exists-Output:
+                componentInputParameter: pipelinechannel--check-model-exists-Output
+              pipelinechannel--evaluate-model-Output:
+                taskOutputParameter:
+                  outputParameterKey: Output
+                  producerTask: evaluate-model
+              pipelinechannel--pushgateway_url:
+                componentInputParameter: pipelinechannel--pushgateway_url
+          taskInfo:
+            name: condition-3
+          triggerPolicy:
+            condition: inputs.parameter_values['pipelinechannel--evaluate-model-Output']
+              == 'bad'
+        evaluate-model:
+          cachingOptions:
+            enableCache: true
+          componentRef:
+            name: comp-evaluate-model
+          inputs:
+            artifacts:
+              x_test:
+                componentInputArtifact: pipelinechannel--download-data-from-azure-x_test
+              y_test:
+                componentInputArtifact: pipelinechannel--download-data-from-azure-y_test
+            parameters:
+              threshold:
+                runtimeValue:
+                  constant: 0.8
+          taskInfo:
+            name: evaluate-model
+    inputDefinitions:
+      artifacts:
+        pipelinechannel--download-data-from-azure-x_test:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+        pipelinechannel--download-data-from-azure-x_train:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+        pipelinechannel--download-data-from-azure-y_test:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+        pipelinechannel--download-data-from-azure-y_train:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+      parameters:
+        pipelinechannel--check-model-exists-Output:
+          parameterType: STRING
+        pipelinechannel--pushgateway_url:
+          parameterType: STRING
+  comp-condition-3:
+    dag:
+      tasks:
+        train-model-2:
+          cachingOptions:
+            enableCache: true
+          componentRef:
+            name: comp-train-model-2
+          inputs:
+            artifacts:
+              x_train:
+                componentInputArtifact: pipelinechannel--download-data-from-azure-x_train
+              y_train:
+                componentInputArtifact: pipelinechannel--download-data-from-azure-y_train
+            parameters:
+              pushgateway_url:
+                componentInputParameter: pipelinechannel--pushgateway_url
+          taskInfo:
+            name: train-model-2
+    inputDefinitions:
+      artifacts:
+        pipelinechannel--download-data-from-azure-x_train:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+        pipelinechannel--download-data-from-azure-y_train:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+      parameters:
+        pipelinechannel--check-model-exists-Output:
+          parameterType: STRING
+        pipelinechannel--evaluate-model-Output:
+          parameterType: STRING
+        pipelinechannel--pushgateway_url:
+          parameterType: STRING
+  comp-download-data-from-azure:
+    executorLabel: exec-download-data-from-azure
+    inputDefinitions:
+      parameters:
+        azure_connection_string:
+          parameterType: STRING
+        container_name:
+          defaultValue: csvstorage
+          isOptional: true
+          parameterType: STRING
+        x_test_blob:
+          defaultValue: X_test.csv
+          isOptional: true
+          parameterType: STRING
+        x_train_blob:
+          defaultValue: X_train.csv
+          isOptional: true
+          parameterType: STRING
+        y_test_blob:
+          defaultValue: y_test.csv
+          isOptional: true
+          parameterType: STRING
+        y_train_blob:
+          defaultValue: y_train.csv
+          isOptional: true
+          parameterType: STRING
+    outputDefinitions:
+      artifacts:
+        x_test:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+        x_train:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+        y_test:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+        y_train:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+  comp-evaluate-model:
+    executorLabel: exec-evaluate-model
+    inputDefinitions:
+      artifacts:
+        x_test:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+        y_test:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+      parameters:
+        threshold:
+          defaultValue: 0.8
+          isOptional: true
+          parameterType: NUMBER_DOUBLE
+    outputDefinitions:
+      parameters:
+        Output:
+          parameterType: STRING
+  comp-train-model:
+    executorLabel: exec-train-model
+    inputDefinitions:
+      artifacts:
+        x_train:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+        y_train:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+      parameters:
+        pushgateway_url:
+          defaultValue: http://pushgateway-prometheus-pushgateway.monitoring.svc.cluster.local:9091
+          isOptional: true
+          parameterType: STRING
+    outputDefinitions:
+      artifacts:
+        trained_model:
+          artifactType:
+            schemaTitle: system.Model
+            schemaVersion: 0.0.1
+  comp-train-model-2:
+    executorLabel: exec-train-model-2
+    inputDefinitions:
+      artifacts:
+        x_train:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+        y_train:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+      parameters:
+        pushgateway_url:
+          defaultValue: http://pushgateway-prometheus-pushgateway.monitoring.svc.cluster.local:9091
+          isOptional: true
+          parameterType: STRING
+    outputDefinitions:
+      artifacts:
+        trained_model:
+          artifactType:
+            schemaTitle: system.Model
+            schemaVersion: 0.0.1
+deploymentSpec:
+  executors:
+    exec-check-model-exists:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - check_model_exists
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.12.1'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"'  &&\
+          \  python3 -m pip install --quiet --no-warn-script-location 'minio' && \"\
+          $0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef check_model_exists() -> str:\n    from minio import Minio\n\n\
+          \    client = Minio('minio-service:9000', access_key='minio', secret_key='minio123',\
+          \ secure=False)\n    try:\n        exists = client.bucket_exists(\"models\"\
+          ) and client.stat_object(\"models\", \"best_model.pkl\") is not None\n \
+          \       return \"exists\" if exists else \"first_run\"\n    except Exception:\n\
+          \        return \"first_run\"\n\n"
+        image: python:3.12.3
+    exec-download-data-from-azure:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - download_data_from_azure
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.12.1'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"'  &&\
+          \  python3 -m pip install --quiet --no-warn-script-location 'pandas' 'azure-storage-blob'\
+          \ && \"$0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef download_data_from_azure(\n    x_train: Output[Dataset],\n  \
+          \  x_test: Output[Dataset],\n    y_train: Output[Dataset],\n    y_test:\
+          \ Output[Dataset],\n    azure_connection_string: str,\n    container_name:\
+          \ str = 'csvstorage',\n    x_train_blob: str = \"X_train.csv\",\n    x_test_blob:\
+          \ str = \"X_test.csv\",\n    y_train_blob: str = \"y_train.csv\",\n    y_test_blob:\
+          \ str = \"y_test.csv\"\n):\n    import pandas as pd\n    from azure.storage.blob\
+          \ import BlobServiceClient\n\n    client = BlobServiceClient.from_connection_string(azure_connection_string)\n\
+          \n    def download_blob(blob_name, path):\n        blob = client.get_blob_client(container_name,\
+          \ blob_name)\n        with open(path, 'wb') as f:\n            f.write(blob.download_blob().readall())\n\
+          \n    download_blob(x_train_blob, x_train.path)\n    download_blob(x_test_blob,\
+          \ x_test.path)\n    download_blob(y_train_blob, y_train.path)\n    download_blob(y_test_blob,\
+          \ y_test.path)\n\n"
+        image: python:3.12.3
+    exec-evaluate-model:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - evaluate_model
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.12.1'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"'  &&\
+          \  python3 -m pip install --quiet --no-warn-script-location 'pandas' 'joblib'\
+          \ 'scikit-learn' 'minio' && \"$0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef evaluate_model(\n    x_test: Input[Dataset],\n    y_test: Input[Dataset],\n\
+          \    threshold: float = 0.8\n) -> str:\n    import pandas as pd\n    import\
+          \ joblib\n    from sklearn.metrics import r2_score\n    from minio import\
+          \ Minio\n\n    client = Minio('minio-service:9000', access_key='minio',\
+          \ secret_key='minio123', secure=False)\n    try:\n        client.fget_object(\"\
+          models\", \"best_model.pkl\", \"downloaded_model.pkl\")\n    except Exception:\n\
+          \        return \"bad\"\n\n    model = joblib.load(\"downloaded_model.pkl\"\
+          )\n    X_test = pd.read_csv(x_test.path)\n    y_test_data = pd.read_csv(y_test.path).values.ravel()\n\
+          \n    y_pred = model.predict(X_test)\n    r2 = r2_score(y_test_data, y_pred)\n\
+          \n    return \"good\" if r2 >= threshold else \"bad\"\n\n"
+        image: python:3.12.3
+    exec-train-model:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - train_model
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.12.1'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"'  &&\
+          \  python3 -m pip install --quiet --no-warn-script-location 'pandas' 'mlflow'\
+          \ 'scikit-learn' 'joblib' 'minio' 'dagshub' 'requests' 'prometheus_client'\
+          \ && \"$0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef train_model(\n    x_train: Input[Dataset],\n    y_train: Input[Dataset],\n\
+          \    trained_model: Output[Model],\n    pushgateway_url: str = \"http://pushgateway-prometheus-pushgateway.monitoring.svc.cluster.local:9091\"\
+          \n):\n    import pandas as pd\n    import mlflow\n    import joblib\n  \
+          \  import requests\n    from prometheus_client import Gauge\n    from sklearn.model_selection\
+          \ import train_test_split\n    from sklearn.ensemble import RandomForestRegressor\n\
+          \    from sklearn.metrics import r2_score\n    from minio import Minio\n\
+          \    import dagshub\n\n    # Authenticate to DagsHub MLflow\n    dagshub.auth.add_app_token(\"\
+          c1b64f0e0a5268dae2ca62d0ae4bec20fdecb445\")\n    dagshub.init(repo_owner='manish-bagdwal1',\
+          \ repo_name='MLOps-Pipeline-Local-Batch-Training', mlflow=True)\n\n    mlflow.set_tracking_uri('https://dagshub.com/manish-bagdwal1/MLOps-Pipeline-Local-Batch-Training.mlflow')\n\
+          \    mlflow.set_experiment('kubeflow_experiment_prometheus')\n\n    # Load\
+          \ the full train data\n    X = pd.read_csv(x_train.path)\n    y = pd.read_csv(y_train.path).values.ravel()\n\
+          \n    # Split into train and validation\n    X_train, X_val, y_train_split,\
+          \ y_val = train_test_split(X, y, test_size=0.2, random_state=42)\n\n   \
+          \ model = RandomForestRegressor(n_estimators=100, random_state=42)\n\n \
+          \   with mlflow.start_run(run_name=\"RandomForest\"):\n        model.fit(X_train,\
+          \ y_train_split)\n        predictions = model.predict(X_val)\n        r2\
+          \ = r2_score(y_val, predictions)\n\n        mlflow.log_param(\"n_estimators\"\
+          , 100)\n        mlflow.log_metric(\"r2\", r2)\n        mlflow.sklearn.log_model(model,\
+          \ \"random_forest_model\")\n\n        # Save model locally\n        joblib.dump(model,\
+          \ trained_model.path)\n\n            # Export metric to Prometheus\n   \
+          \     r2_metric = Gauge('r2', 'r2 score of model')\n        r2_metric.set(r2)\n\
+          \n        # Upload model to MinIO\n        client = Minio('minio-service:9000',\
+          \ access_key='minio', secret_key='minio123', secure=False)\n        if not\
+          \ client.bucket_exists(\"models\"):\n            client.make_bucket(\"models\"\
+          )\n        client.fput_object(\"models\", \"best_model.pkl\", trained_model.path)\n\
+          \n        # Push R2 to Prometheus Pushgateway\n        job_name = \"fuel_model_training\"\
+          \n        metric_name = \"model_r2\"\n        metric_value = r2\n      \
+          \  payload = f\"{metric_name} {metric_value}\\n\"\n\n        response =\
+          \ requests.post(\n            f\"{pushgateway_url}/metrics/job/{job_name}\"\
+          ,\n            data=payload,\n            headers={\"Content-Type\": \"\
+          text/plain\"}\n        )\n\n        if response.status_code in [202,200]:\n\
+          \            print(\"R2 pushed to Prometheus Pushgateway\")\n        else:\n\
+          \            print(f\"Failed to push metric. Status: {response.status_code}\"\
+          )\n\n"
+        image: python:3.12.3
+    exec-train-model-2:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - train_model
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.12.1'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"'  &&\
+          \  python3 -m pip install --quiet --no-warn-script-location 'pandas' 'mlflow'\
+          \ 'scikit-learn' 'joblib' 'minio' 'dagshub' 'requests' 'prometheus_client'\
+          \ && \"$0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef train_model(\n    x_train: Input[Dataset],\n    y_train: Input[Dataset],\n\
+          \    trained_model: Output[Model],\n    pushgateway_url: str = \"http://pushgateway-prometheus-pushgateway.monitoring.svc.cluster.local:9091\"\
+          \n):\n    import pandas as pd\n    import mlflow\n    import joblib\n  \
+          \  import requests\n    from prometheus_client import Gauge\n    from sklearn.model_selection\
+          \ import train_test_split\n    from sklearn.ensemble import RandomForestRegressor\n\
+          \    from sklearn.metrics import r2_score\n    from minio import Minio\n\
+          \    import dagshub\n\n    # Authenticate to DagsHub MLflow\n    dagshub.auth.add_app_token(\"\
+          c1b64f0e0a5268dae2ca62d0ae4bec20fdecb445\")\n    dagshub.init(repo_owner='manish-bagdwal1',\
+          \ repo_name='MLOps-Pipeline-Local-Batch-Training', mlflow=True)\n\n    mlflow.set_tracking_uri('https://dagshub.com/manish-bagdwal1/MLOps-Pipeline-Local-Batch-Training.mlflow')\n\
+          \    mlflow.set_experiment('kubeflow_experiment_prometheus')\n\n    # Load\
+          \ the full train data\n    X = pd.read_csv(x_train.path)\n    y = pd.read_csv(y_train.path).values.ravel()\n\
+          \n    # Split into train and validation\n    X_train, X_val, y_train_split,\
+          \ y_val = train_test_split(X, y, test_size=0.2, random_state=42)\n\n   \
+          \ model = RandomForestRegressor(n_estimators=100, random_state=42)\n\n \
+          \   with mlflow.start_run(run_name=\"RandomForest\"):\n        model.fit(X_train,\
+          \ y_train_split)\n        predictions = model.predict(X_val)\n        r2\
+          \ = r2_score(y_val, predictions)\n\n        mlflow.log_param(\"n_estimators\"\
+          , 100)\n        mlflow.log_metric(\"r2\", r2)\n        mlflow.sklearn.log_model(model,\
+          \ \"random_forest_model\")\n\n        # Save model locally\n        joblib.dump(model,\
+          \ trained_model.path)\n\n            # Export metric to Prometheus\n   \
+          \     r2_metric = Gauge('r2', 'r2 score of model')\n        r2_metric.set(r2)\n\
+          \n        # Upload model to MinIO\n        client = Minio('minio-service:9000',\
+          \ access_key='minio', secret_key='minio123', secure=False)\n        if not\
+          \ client.bucket_exists(\"models\"):\n            client.make_bucket(\"models\"\
+          )\n        client.fput_object(\"models\", \"best_model.pkl\", trained_model.path)\n\
+          \n        # Push R2 to Prometheus Pushgateway\n        job_name = \"fuel_model_training\"\
+          \n        metric_name = \"model_r2\"\n        metric_value = r2\n      \
+          \  payload = f\"{metric_name} {metric_value}\\n\"\n\n        response =\
+          \ requests.post(\n            f\"{pushgateway_url}/metrics/job/{job_name}\"\
+          ,\n            data=payload,\n            headers={\"Content-Type\": \"\
+          text/plain\"}\n        )\n\n        if response.status_code in [202,200]:\n\
+          \            print(\"R2 pushed to Prometheus Pushgateway\")\n        else:\n\
+          \            print(f\"Failed to push metric. Status: {response.status_code}\"\
+          )\n\n"
+        image: python:3.12.3
+pipelineInfo:
+  description: Retrains the fuel efficiency model if R2 drops on new data
+  name: fuel-efficiency-auto-retraining-pipeline
+root:
+  dag:
+    tasks:
+      check-model-exists:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-check-model-exists
+        taskInfo:
+          name: check-model-exists
+      condition-1:
+        componentRef:
+          name: comp-condition-1
+        dependentTasks:
+        - check-model-exists
+        - download-data-from-azure
+        inputs:
+          artifacts:
+            pipelinechannel--download-data-from-azure-x_train:
+              taskOutputArtifact:
+                outputArtifactKey: x_train
+                producerTask: download-data-from-azure
+            pipelinechannel--download-data-from-azure-y_train:
+              taskOutputArtifact:
+                outputArtifactKey: y_train
+                producerTask: download-data-from-azure
+          parameters:
+            pipelinechannel--check-model-exists-Output:
+              taskOutputParameter:
+                outputParameterKey: Output
+                producerTask: check-model-exists
+            pipelinechannel--pushgateway_url:
+              componentInputParameter: pushgateway_url
+        taskInfo:
+          name: condition-1
+        triggerPolicy:
+          condition: inputs.parameter_values['pipelinechannel--check-model-exists-Output']
+            == 'first_run'
+      condition-2:
+        componentRef:
+          name: comp-condition-2
+        dependentTasks:
+        - check-model-exists
+        - download-data-from-azure
+        inputs:
+          artifacts:
+            pipelinechannel--download-data-from-azure-x_test:
+              taskOutputArtifact:
+                outputArtifactKey: x_test
+                producerTask: download-data-from-azure
+            pipelinechannel--download-data-from-azure-x_train:
+              taskOutputArtifact:
+                outputArtifactKey: x_train
+                producerTask: download-data-from-azure
+            pipelinechannel--download-data-from-azure-y_test:
+              taskOutputArtifact:
+                outputArtifactKey: y_test
+                producerTask: download-data-from-azure
+            pipelinechannel--download-data-from-azure-y_train:
+              taskOutputArtifact:
+                outputArtifactKey: y_train
+                producerTask: download-data-from-azure
+          parameters:
+            pipelinechannel--check-model-exists-Output:
+              taskOutputParameter:
+                outputParameterKey: Output
+                producerTask: check-model-exists
+            pipelinechannel--pushgateway_url:
+              componentInputParameter: pushgateway_url
+        taskInfo:
+          name: condition-2
+        triggerPolicy:
+          condition: inputs.parameter_values['pipelinechannel--check-model-exists-Output']
+            == 'exists'
+      download-data-from-azure:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-download-data-from-azure
+        inputs:
+          parameters:
+            azure_connection_string:
+              componentInputParameter: azure_connection_string
+        taskInfo:
+          name: download-data-from-azure
+  inputDefinitions:
+    parameters:
+      azure_connection_string:
+        parameterType: STRING
+      pushgateway_url:
+        defaultValue: http://pushgateway-prometheus-pushgateway.monitoring.svc.cluster.local:9091
+        isOptional: true
+        parameterType: STRING
+schemaVersion: 2.1.0
+sdkVersion: kfp-2.12.1
